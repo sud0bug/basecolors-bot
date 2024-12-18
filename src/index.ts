@@ -30,11 +30,11 @@ async function publishToFarcaster(cast: { text: string; url?: string }) {
   const publishCastResponse = await client.submitCast(
     {
       text: cast.text,
-      // embeds: [
-      //   {
-      //     url: cast.url,
-      //   },
-      // ],
+      embeds: [
+        {
+          url: cast.url,
+        },
+      ],
     },
     Number(fid),
     signerPrivateKey
@@ -63,7 +63,7 @@ async function handleTransaction(data: any) {
     const message = { text: text, url: url };
     console.log("Message to publish:", message);
 
-    // await publishToFarcaster(message);
+    await publishToFarcaster(message);
   } catch (e) {
     console.error(e);
   }
