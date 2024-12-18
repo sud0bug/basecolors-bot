@@ -25,6 +25,7 @@ interface Error {
 interface Social {
   dappName: "farcaster";
   profileName: string;
+  profileTokenId: number;
 }
 
 const query = `
@@ -35,12 +36,13 @@ query FindFarcasterUserByConnectedAddress($address: Address, $dappName: SocialDa
     Social {
       dappName
       profileName
+	  profileTokenId
     }
   }
 }
 `;
 
-export default async function fetchFCUser(address: string): Promise<string | null> {
+export default async function fetchFCUser(address: string): Promise<number | null> {
   const variables = {
     address,
     dappName: "farcaster",
@@ -54,5 +56,5 @@ export default async function fetchFCUser(address: string): Promise<string | nul
   }
 
   // Return the first profile name found, or null if none exists
-  return data?.Socials?.Social?.[0]?.profileName ?? null;
+  return data?.Socials?.Social?.[0]?.profileTokenId ?? null;
 }

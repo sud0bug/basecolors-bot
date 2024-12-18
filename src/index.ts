@@ -22,7 +22,7 @@ const publicClient = createPublicClient({
   transport: webSocket(RPC[CHAIN_ID].url),
 });
 
-async function publishToFarcaster(cast: { text: string; url?: string }) {
+async function publishToFarcaster(cast: { text: string; url?: string; mentions?: number[]; mentionsPositions?: number[] }) {
   if (!signerPrivateKey || !fid) {
     throw new Error("No signer private key or account fid provided");
   }
@@ -35,6 +35,8 @@ async function publishToFarcaster(cast: { text: string; url?: string }) {
           url: cast.url,
         },
       ],
+      mentions: cast.mentions || [],
+      mentionsPositions: cast.mentionsPositions || [],
     },
     Number(fid),
     signerPrivateKey
@@ -49,19 +51,17 @@ async function handleTransaction(data: any) {
     const mintedTo = getAddress("0x" + data?.result?.topics[1].slice(-40));
 
     console.log("Token ID: ", tokenId, mintedTo);
-    const fcUserName = await fetchFCUser(mintedTo);
+    const fid = await fetchFCUser(mintedTo);
 
-    // const text = `New trade: ${interpreted.trader} ${
-    //   interpreted.isBuy ? "Bought" : "Sold"
-    // } ${interpreted.shareAmount} shares of ${interpreted.subject} for ${
-    //   interpreted.price
-    // } ETH`;
-
-    const text = `${fcUserName ? `@${fcUserName}` : shortenAddressFirstFourLastThree(mintedTo)} minted Palette #${tokenId}`
+    const text = `${fid ? `` : shortenAddressFirstFourLastThree(mintedTo)} minted Palette #${tokenId}`
     const url = `https://palettes.fun/?tokenid=${tokenId}`
 
-    const message = { text: text, url: url };
-    console.log("Message to publish:", message);
+    const message = { 
+      text: text, 
+      url: url, 
+      mentions: fid ? [Number(fid)] : [], 
+      mentionsPositions: fid ? [0] : [] 
+    };
 
     await publishToFarcaster(message);
   } catch (e) {
