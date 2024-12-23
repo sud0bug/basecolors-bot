@@ -8,8 +8,8 @@ export const RPC = {
   },
 };
 
-export const CONTRACT_ADDRESS = "0xab83a7824a42fa2082c0796645e467c3415ac0de";
-// export const CONTRACT_ADDRESS = "0x65ABF7Ef344f9f1fa0fa9F05aC8670575521A6E4"; // base sepolia address
+export const CONTRACT_ADDRESS = "0x7Bc1C072742D8391817EB4Eb2317F98dc72C61dB";
+// export const CONTRACT_ADDRESS = "0x70f19d04b867431a316d070fa58a22df02a89c86"; // base sepolia address
 export const CHAIN_ID = 8453;
 export const ETHERSCAN_ENDPOINT = "https://basescan.org";
 export const FARCASTER_HUB_URL = "https://hub.farcaster.standardcrypto.vc:2281";

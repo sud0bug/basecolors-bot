@@ -18,7 +18,7 @@ import { mnemonicToAccount } from "viem/accounts";
 import { ed25519 } from "@noble/curves/ed25519";
 
 //your Farcaster recovery phrase: settings -> advanced -> recovery phrase
-const MNEMONIC = "";
+const MNEMONIC = "leave inject bind odor sheriff puppy mad item garlic coyote distance head";
 
 const CONTRACTS = {
   idRegistry: "0x00000000fc6c5f01fc30151999387bb99a9f489b" as const,

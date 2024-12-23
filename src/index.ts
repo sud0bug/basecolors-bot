@@ -8,10 +8,20 @@ import {
   RPC,
 } from "./constants.js";
 import { HubRestAPIClient } from "@standard-crypto/farcaster-js-hub-rest";
-import { createPublicClient, webSocket, type Hex, getAddress, parseEventLogs } from "viem";
-import { abi } from "./abi.json";
+import { createPublicClient, webSocket, type Hex, getAddress, parseEventLogs, formatEther } from "viem";
 import fetchFCUser from "./getchFCUser.js";
 import { shortenAddressFirstFourLastThree } from "./utils.js";
+import { ethers } from "ethers";
+import { Network, Alchemy } from "alchemy-sdk";
+import abi from "./abi.json";
+
+const settings = {
+  apiKey: process.env.ALCHEMY_API_KEY,
+  network: Network.BASE_MAINNET,
+};
+
+const alchemy = new Alchemy(settings);
+
 const signerPrivateKey = process.env.SIGNER_PRIVATE_KEY;
 const fid = process.env.ACCOUNT_FID;
 const client = new HubRestAPIClient({
@@ -22,7 +32,20 @@ const publicClient = createPublicClient({
   transport: webSocket(RPC[CHAIN_ID].url),
 });
 
+const iface = new ethers.Interface(abi);
+
+interface ColorMintPayload {
+  color: string;
+  name?: string;
+  address: string;
+}
+
+
 async function publishToFarcaster(cast: { text: string; url?: string; mentions?: number[]; mentionsPositions?: number[] }) {
+  console.log("publishToFarcaster", cast);
+  console.log("signerPrivateKey", signerPrivateKey);
+  console.log("fid", fid);
+  
   if (!signerPrivateKey || !fid) {
     throw new Error("No signer private key or account fid provided");
   }
@@ -44,47 +67,82 @@ async function publishToFarcaster(cast: { text: string; url?: string; mentions?:
   console.log(`new cast hash: ${publishCastResponse.hash}`);
 }
 
-async function handleTransaction(data: any) {
+const castToHub = async ({ color, name, address }: ColorMintPayload) => {
+  const fid = await fetchFCUser(address);
+
+  let text = `${color.toUpperCase()}`;
+
+  if (name) {
+    text += `\n\n${name.toUpperCase()}`;
+  }
+
+  text += `\n\nminted by ${fid ? " " : shortenAddressFirstFourLastThree(address)}`;
+
+  await publishToFarcaster({
+    text,
+    url: `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`,
+    mentions: fid ? [Number(fid)] : [],
+    mentionsPositions: fid ? [text.length - 1] : [],
+  });
+}
+
+async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
   try {
+    setTimeout(async () => {
+      const parsedLog = iface.parseLog(data?.result);
 
-    const tokenId = Number(BigInt(data?.result?.topics[2]));
-    const mintedTo = getAddress("0x" + data?.result?.topics[1].slice(-40));
+      const toAddress = parsedLog?.args?.to;
+      const tokenId = parsedLog?.args?.tokenId;
 
-    console.log("Token ID: ", tokenId, mintedTo);
-    const fid = await fetchFCUser(mintedTo);
+      const response = await alchemy.nft.getNftMetadata(
+        CONTRACT_ADDRESS,
+        tokenId
+      );
 
-    const text = `${fid ? `` : shortenAddressFirstFourLastThree(mintedTo)} minted Palette #${tokenId}`
-    const url = `https://palettes.fun/?tokenid=${tokenId}`
+      const color = response.raw.metadata.name;
+      console.log(response.raw.metadata);
+      
+      const name = response.raw.metadata.attributes.find((attribute: any) => attribute.trait_type === "Color Name")?.value;
 
-    const message = { 
-      text: text, 
-      url: url, 
-      mentions: fid ? [Number(fid)] : [], 
-      mentionsPositions: fid ? [0] : [] 
-    };
+      console.log(name);
 
-    await publishToFarcaster(message);
+      const payload: ColorMintPayload = {
+        color: color,
+        address: toAddress
+      };
+
+      if (name && `#${name.toLowerCase()}` !== color.toLowerCase()) {
+        payload.name = name;
+      }
+
+      castToHub(payload);
+    }, 5 * 60 * 1000);
+  // }, 50000);
+
   } catch (e) {
     console.error(e);
   }
 }
-let lastProcessedAt = Date.now();
 
-let test = true;
+let lastProcessedAt = Date.now();
 
 async function createSubscription(address: string) {
   console.log("Creating subscription for address: ", address);
-  const response = await publicClient.transport.subscribe({
+
+  const tokenMinted = await publicClient.transport.subscribe({
     method: "eth_subscribe",
     params: [
       //@ts-expect-error
       "logs",
       {
         address: [address],
-        topics: ["0xdce49f9b2976c7398205b804e71f718f3482eb59a6524f7ac8355f1ad78ca4ae"],
+        topics: [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ],
       },
     ],
-    onData: handleTransaction,
+    onData: (data: any) => handleTokenMintLogs(data, true),
     onError: (error: any) => {
       console.error(error);
     },
@@ -96,7 +154,7 @@ async function createSubscription(address: string) {
         "No new transactions in the last 5 minutes, restarting subscription"
       );
       clearInterval(interval);
-      response.unsubscribe();
+      tokenMinted.unsubscribe();
       createSubscription(CONTRACT_ADDRESS);
     }
   }, 60_000 * 5);
