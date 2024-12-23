@@ -43,10 +43,6 @@ interface ColorMintPayload {
 }
 
 async function publishToFarcaster(cast: { text: string; url?: string; mentions?: number[]; mentionsPositions?: number[] }) {
-  console.log("publishToFarcaster", cast);
-  console.log("signerPrivateKey", signerPrivateKey);
-  console.log("fid", fid);
-  
   if (!signerPrivateKey || !fid) {
     throw new Error("No signer private key or account fid provided");
   }
@@ -79,7 +75,8 @@ const castToHub = async ({ color, name, address, url }: ColorMintPayload) => {
 
   text += `\n\nminted by ${fid ? " " : shortenAddressFirstFourLastThree(address)}`;
   
-  const imageUrl = (url && url.startsWith("https://")) ? url : `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
+  // const imageUrl = (url && url.startsWith("https://")) ? url : `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
+  const imageUrl = `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
 
   console.log("Casting to Farcaster", {
     text,
@@ -125,7 +122,7 @@ async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
 
       const color = response.raw.metadata.name;
       
-      const name = response.raw.metadata.attributes.find((attribute: any) => attribute.trait_type === "Color Name")?.value;
+      const name = parsedTokenData.attributes.find((attribute: any) => attribute.trait_type === "Color Name")?.value;
 
       const payload: ColorMintPayload = {
         color: color,
