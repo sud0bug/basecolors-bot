@@ -163,15 +163,12 @@ async function createSubscription(address: string) {
     ],
     onData: (data: any) => handleTokenMintLogs(data, true),
     onError: (error: any) => {
-      console.error(error);
+      console.log("Error in subscription", error);
     },
   });
 
   const interval = setInterval(() => {
     if (Date.now() - lastProcessedAt > 60_000 * 5) {
-      console.error(
-        "No new transactions in the last 5 minutes, restarting subscription"
-      );
       clearInterval(interval);
       tokenMinted.unsubscribe();
       createSubscription(CONTRACT_ADDRESS);
