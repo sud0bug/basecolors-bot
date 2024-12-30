@@ -15,12 +15,8 @@ import { ethers } from "ethers";
 import { Network, Alchemy } from "alchemy-sdk";
 import abi from "./abi.json";
 import { readContract } from "viem/actions";
-
-const settings = {
-  apiKey: process.env.ALCHEMY_API_KEY,
-  network: Network.BASE_MAINNET,
-};
-
+import getName from "./utils/ens.js";
+import { settings } from "./constants.js";
 const alchemy = new Alchemy(settings);
 
 const signerPrivateKey = process.env.SIGNER_PRIVATE_KEY;
@@ -67,13 +63,15 @@ async function publishToFarcaster(cast: { text: string; url?: string; mentions?:
 const castToHub = async ({ color, name, address, url }: ColorMintPayload) => {
   const fid = await fetchFCUser(address);
 
+  const ensName = await getName(address);
+
   let text = `${color.toUpperCase()}`;
 
   if (name) {
-    text += `\n\n${name.toUpperCase()}`;
+    text += `\n\n"${name.toUpperCase()}"`;
   }
 
-  text += `\n\nminted by ${fid ? " " : shortenAddressFirstFourLastThree(address)}`;
+  text += `\n\nminted by ${fid ? " " : ensName ? ensName : shortenAddressFirstFourLastThree(address)}`;
   
   // const imageUrl = (url && url.startsWith("https://")) ? url : `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
   const imageUrl = `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
@@ -94,6 +92,7 @@ const castToHub = async ({ color, name, address, url }: ColorMintPayload) => {
 }
 
 async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
+  console.log("Received token mint log", data);
   try {
     setTimeout(async () => {
       const parsedLog = iface.parseLog(data?.result);
@@ -106,6 +105,8 @@ async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
         tokenId
       );
 
+      console.log("response from alchemy", response);
+
       const tokenData = await readContract(publicClient, {
         address: CONTRACT_ADDRESS,
         abi: abi,
@@ -116,7 +117,7 @@ async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
 
       const parsedTokenData = JSON.parse(Buffer.from(tokenData.replace("data:application/json;base64,", ""), "base64").toString("utf-8"));
 
-      console.log("parsedTokenData", parsedTokenData);
+      console.log("parsedTokenData from contract", parsedTokenData);
       
       const cachedUrl = response.image.cachedUrl;
 
@@ -135,7 +136,7 @@ async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
       }
 
       castToHub(payload);
-    }, 5 * 60 * 1000);
+    }, 10 * 60 * 1000);
   // }, 1000);
 
   } catch (e) {

@@ -12,6 +12,7 @@
     "@3loop/transaction-decoder": "^0.17.0",
     "@airstack/node": "^0.0.7",
     "@alch/alchemy-web3": "^1.4.7",
+    "@coinbase/onchainkit": "^0.36.3",
     "@standard-crypto/farcaster-js-hub-rest": "^1.5.0",
     "alchemy-sdk": "^3.5.0",
     "ethers": "^6.13.4",
