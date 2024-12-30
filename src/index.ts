@@ -17,6 +17,7 @@ import abi from "./abi.json";
 import { readContract } from "viem/actions";
 import getName from "./utils/ens.js";
 import { settings } from "./constants.js";
+import postTweet from "./utils/tweeter.js";
 const alchemy = new Alchemy(settings);
 
 const signerPrivateKey = process.env.SIGNER_PRIVATE_KEY;
@@ -35,7 +36,6 @@ interface ColorMintPayload {
   color: string;
   name?: string;
   address: string;
-  url?: string;
 }
 
 async function publishToFarcaster(cast: { text: string; url?: string; mentions?: number[]; mentionsPositions?: number[] }) {
@@ -60,7 +60,7 @@ async function publishToFarcaster(cast: { text: string; url?: string; mentions?:
   console.log(`new cast hash: ${publishCastResponse.hash}`);
 }
 
-const castToHub = async ({ color, name, address, url }: ColorMintPayload) => {
+const castToHub = async ({ color, name, address }: ColorMintPayload) => {
   const fid = await fetchFCUser(address);
 
   const ensName = await getName(address);
@@ -71,9 +71,10 @@ const castToHub = async ({ color, name, address, url }: ColorMintPayload) => {
     text += `\n\n"${name.toUpperCase()}"`;
   }
 
+  const tweetText = text + `\n\nminted by ${ensName ? ensName : shortenAddressFirstFourLastThree(address)}`;
+
   text += `\n\nminted by ${fid ? " " : ensName ? ensName : shortenAddressFirstFourLastThree(address)}`;
-  
-  // const imageUrl = (url && url.startsWith("https://")) ? url : `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
+
   const imageUrl = `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
 
   console.log("Casting to Farcaster", {
@@ -89,6 +90,8 @@ const castToHub = async ({ color, name, address, url }: ColorMintPayload) => {
     mentions: fid ? [Number(fid)] : [],
     mentionsPositions: fid ? [text.length - 1] : [],
   });
+
+  await postTweet(tweetText, color);
 }
 
 async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
@@ -113,22 +116,19 @@ async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
         functionName: "tokenURI",
         args: [tokenId]
       }) as string;
-      
+
 
       const parsedTokenData = JSON.parse(Buffer.from(tokenData.replace("data:application/json;base64,", ""), "base64").toString("utf-8"));
 
       console.log("parsedTokenData from contract", parsedTokenData);
-      
-      const cachedUrl = response.image.cachedUrl;
 
       const color = response.raw.metadata.name;
-      
+
       const name = parsedTokenData.attributes.find((attribute: any) => attribute.trait_type === "Color Name")?.value;
 
       const payload: ColorMintPayload = {
         color: color,
         address: toAddress,
-        url: cachedUrl,
       };
 
       if (name && `#${name.toLowerCase()}` !== color.toLowerCase()) {
@@ -137,7 +137,6 @@ async function handleTokenMintLogs(data: any, isBatch: boolean = false) {
 
       castToHub(payload);
     }, 10 * 60 * 1000);
-  // }, 1000);
 
   } catch (e) {
     console.error(e);
