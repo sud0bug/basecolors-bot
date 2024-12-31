@@ -75,7 +75,7 @@ const castToHub = async ({ color, name, address }: ColorMintPayload) => {
 
   text += `\n\nminted by ${fid ? " " : ensName ? ensName : shortenAddressFirstFourLastThree(address)}`;
 
-  const imageUrl = `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}`;
+  const imageUrl = `https://www.palettes.fun/api/basecolors/image/${color.replace("#", "").toLowerCase()}.png`;
 
   console.log("Casting to Farcaster", {
     text,
