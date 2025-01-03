@@ -161,7 +161,10 @@ async function createSubscription(address: string) {
         ],
       },
     ],
-    onData: (data: any) => handleTokenMintLogs(data, true),
+    onData: (data: any) => {
+      lastProcessedAt = Date.now();
+      handleTokenMintLogs(data, true)
+    },
     onError: (error: any) => {
       console.log("Error in subscription", error);
     },
