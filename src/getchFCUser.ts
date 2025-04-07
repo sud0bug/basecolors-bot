@@ -52,7 +52,8 @@ export default async function fetchFCUser(address: string): Promise<number | nul
   const { data, error }: QueryResponse = await fetchQuery(query, variables);
 
   if (error) {
-    throw new Error(error.message);
+    console.error("Error fetching data:", error);
+    // throw new Error(error.message);
   }
 
   // Return the first profile name found, or null if none exists
